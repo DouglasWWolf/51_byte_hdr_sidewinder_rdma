@@ -57,6 +57,11 @@ module bd_378d_wrapper
     SLOT_3_AXIS_tlast,
     SLOT_3_AXIS_tready,
     SLOT_3_AXIS_tvalid,
+    SLOT_4_AXIS_tdata,
+    SLOT_4_AXIS_tkeep,
+    SLOT_4_AXIS_tlast,
+    SLOT_4_AXIS_tready,
+    SLOT_4_AXIS_tvalid,
     clk,
     resetn);
   input [63:0]SLOT_0_AXI_araddr;
@@ -109,6 +114,11 @@ module bd_378d_wrapper
   input SLOT_3_AXIS_tlast;
   input SLOT_3_AXIS_tready;
   input SLOT_3_AXIS_tvalid;
+  input [511:0]SLOT_4_AXIS_tdata;
+  input [63:0]SLOT_4_AXIS_tkeep;
+  input SLOT_4_AXIS_tlast;
+  input SLOT_4_AXIS_tready;
+  input SLOT_4_AXIS_tvalid;
   input clk;
   input resetn;
 
@@ -162,6 +172,11 @@ module bd_378d_wrapper
   wire SLOT_3_AXIS_tlast;
   wire SLOT_3_AXIS_tready;
   wire SLOT_3_AXIS_tvalid;
+  wire [511:0]SLOT_4_AXIS_tdata;
+  wire [63:0]SLOT_4_AXIS_tkeep;
+  wire SLOT_4_AXIS_tlast;
+  wire SLOT_4_AXIS_tready;
+  wire SLOT_4_AXIS_tvalid;
   wire clk;
   wire resetn;
 
@@ -216,6 +231,11 @@ module bd_378d_wrapper
         .SLOT_3_AXIS_tlast(SLOT_3_AXIS_tlast),
         .SLOT_3_AXIS_tready(SLOT_3_AXIS_tready),
         .SLOT_3_AXIS_tvalid(SLOT_3_AXIS_tvalid),
+        .SLOT_4_AXIS_tdata(SLOT_4_AXIS_tdata),
+        .SLOT_4_AXIS_tkeep(SLOT_4_AXIS_tkeep),
+        .SLOT_4_AXIS_tlast(SLOT_4_AXIS_tlast),
+        .SLOT_4_AXIS_tready(SLOT_4_AXIS_tready),
+        .SLOT_4_AXIS_tvalid(SLOT_4_AXIS_tvalid),
         .clk(clk),
         .resetn(resetn));
 endmodule

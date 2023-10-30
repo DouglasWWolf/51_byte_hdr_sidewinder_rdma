@@ -16,7 +16,7 @@ proc init_gui { IPINST } {
   ipgui::add_param $IPINST -name "SRC_IP3" -parent ${Page_0}
   ipgui::add_param $IPINST -name "SRC_MAC" -parent ${Page_0}
   ipgui::add_param $IPINST -name "SRC_PORT" -parent ${Page_0}
-  ipgui::add_param $IPINST -name "SWIDTH" -parent ${Page_0}
+  ipgui::add_param $IPINST -name "STREAM_WB" -parent ${Page_0}
 
 
 }
@@ -138,19 +138,19 @@ proc validate_PARAM_VALUE.SRC_PORT { PARAM_VALUE.SRC_PORT } {
 	return true
 }
 
-proc update_PARAM_VALUE.SWIDTH { PARAM_VALUE.SWIDTH } {
-	# Procedure called to update SWIDTH when any of the dependent parameters in the arguments change
+proc update_PARAM_VALUE.STREAM_WB { PARAM_VALUE.STREAM_WB } {
+	# Procedure called to update STREAM_WB when any of the dependent parameters in the arguments change
 }
 
-proc validate_PARAM_VALUE.SWIDTH { PARAM_VALUE.SWIDTH } {
-	# Procedure called to validate SWIDTH
+proc validate_PARAM_VALUE.STREAM_WB { PARAM_VALUE.STREAM_WB } {
+	# Procedure called to validate STREAM_WB
 	return true
 }
 
 
-proc update_MODELPARAM_VALUE.SWIDTH { MODELPARAM_VALUE.SWIDTH PARAM_VALUE.SWIDTH } {
+proc update_MODELPARAM_VALUE.STREAM_WB { MODELPARAM_VALUE.STREAM_WB PARAM_VALUE.STREAM_WB } {
 	# Procedure called to set VHDL generic/Verilog parameter value(s) based on TCL parameter value
-	set_property value [get_property value ${PARAM_VALUE.SWIDTH}] ${MODELPARAM_VALUE.SWIDTH}
+	set_property value [get_property value ${PARAM_VALUE.STREAM_WB}] ${MODELPARAM_VALUE.STREAM_WB}
 }
 
 proc update_MODELPARAM_VALUE.SRC_MAC { MODELPARAM_VALUE.SRC_MAC PARAM_VALUE.SRC_MAC } {
