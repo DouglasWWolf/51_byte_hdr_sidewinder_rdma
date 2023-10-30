@@ -1,3 +1,21 @@
+//===================================================================================================
+//                            ------->  Revision History  <------
+//===================================================================================================
+//
+//   Date     Who   Ver  Changes
+//===================================================================================================
+// 30-Oct-23  DWW     1  Initial creation
+//===================================================================================================
+
+/*
+
+This module monitors incoming AXI Write transactions on the AW (address) and W (data) channels of
+an AXI-MM slave, and turns them into outgoing AXI-streams.
+
+This module automatically sends a write-acknowledge on the AXI-MM B channel for every incoming
+AXI write transaction.
+
+*/
 
 module rdma_xmit #
 (
@@ -30,8 +48,8 @@ module rdma_xmit #
     output                                                  S_AXI_WREADY,
 
     // "Send Write Response"                -- Master --    -- Slave --
-    output reg[1:0]                                         S_AXI_BRESP,
-    output reg                                              S_AXI_BVALID,
+    output[1:0]                                             S_AXI_BRESP,
+    output                                                  S_AXI_BVALID,
     input                                   S_AXI_BREADY,
 
     // "Specify read address"               -- Master --    -- Slave --
@@ -59,10 +77,11 @@ module rdma_xmit #
     //==========================================================================
     //                         AXI-Stream output for data
     //==========================================================================
-    output[AXI_DATA_WIDTH-1:0] AXIS_DATA_TDATA,
-    output                     AXIS_DATA_TVALID,
-    output                     AXIS_DATA_TLAST,
-    input                      AXIS_DATA_TREADY,
+    output[AXI_DATA_WIDTH  -1:0] AXIS_DATA_TDATA,
+    output[AXI_DATA_WIDTH/8-1:0] AXIS_DATA_TKEEP,
+    output                       AXIS_DATA_TVALID,
+    output                       AXIS_DATA_TLAST,
+    input                        AXIS_DATA_TREADY,
     //==========================================================================
 
 
@@ -77,17 +96,18 @@ module rdma_xmit #
  );
 
 
-// Wire the AXI-Slave "AW" channel directly to the "target address" output stream
+// Wire the AXI-Slave "AW" channel directly to the AXIS_ADDR output stream
 assign AXIS_ADDR_TDATA  = S_AXI_AWADDR;
 assign AXIS_ADDR_TVALID = S_AXI_AWVALID;
-assign S_AXI_AWREADY = AXIS_ADDR_TREADY;
+assign S_AXI_AWREADY    = AXIS_ADDR_TREADY;
 
 
-// Wire the AXI-Slave "W" channel directly to the streaming output
-assign AXIS_DATA_TDATA   = S_AXI_WDATA;
-assign AXIS_DATA_TVALID  = S_AXI_WVALID;
-assign AXIS_DATA_TLAST   = S_AXI_WLAST;
-assign S_AXI_WREADY      = AXIS_DATA_TREADY;
+// Wire the AXI-Slave "W" channel directly to the AXIS_DATA output stream
+assign AXIS_DATA_TDATA  = S_AXI_WDATA;
+assign AXIS_DATA_TKEEP  = S_AXI_WSTRB;
+assign AXIS_DATA_TVALID = S_AXI_WVALID;
+assign AXIS_DATA_TLAST  = S_AXI_WLAST;
+assign S_AXI_WREADY     = AXIS_DATA_TREADY;
 
 // The number of transactions received, and the number of transactions responded to
 reg[63:0] transactions_rcvd, transactions_resp;
@@ -121,37 +141,20 @@ end
 //    S_AXI_BVALID
 //    transactions_resp
 //====================================================================================
-reg resp_state;
 
+// Our BRESP response is always "OKAY"
+assign S_AXI_BRESP = 0;
+
+// Our BRESP output is valid so long as we have transactions we haven't responsed to
+assign S_AXI_BVALID = (resetn == 1 && transactions_resp < transactions_rcvd);
+
+// Every time we see a valid handshake on the B-channel, it means that
+// we have successfully responded to an AXI write transaction
 always @(posedge clk) begin
-
-    // If we're in reset...
-    if (resetn == 0) begin
+    if (resetn == 0) 
         transactions_resp <= 0;
-        S_AXI_BVALID      <= 0;
-        resp_state        <= 0;
-    
-    end else case (resp_state)
-
-    
-        // If we've received a new transaction, issue the response, then 
-        // go wait for the handshake
-        0:  if (transactions_resp < transactions_rcvd) begin
-                S_AXI_BRESP  <= 0;
-                S_AXI_BVALID <= 1;
-                resp_state   <= 1;
-            end
-
-
-        // Here we're waiting for the handshake on the AXI-Slave B channel
-        1:  if (S_AXI_BVALID & S_AXI_BREADY) begin
-                transactions_resp <= transactions_resp + 1;
-                S_AXI_BVALID      <= 0;
-                resp_state        <= 0;
-            end
-
-    endcase
-
+    else if (S_AXI_BVALID & S_AXI_BREADY)
+        transactions_resp <= transactions_resp + 1;
 end
 //====================================================================================
 

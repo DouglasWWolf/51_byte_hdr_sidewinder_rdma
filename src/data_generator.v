@@ -142,21 +142,25 @@ localparam DECERR = 3;
 localparam ADDR_MASK = 7'h7F;
 
 // When this strobes high, one or more data-bursts are emitted
-reg start_burst_strobe;
+reg[1:0] start_mode;
 
 // The geometry of a set of bursts
 reg[31:0] burst_count, beats_per_burst;
 
+// When sending a single, short beat, this is the number of data bytes in that beat
+reg[31:0] byte_count;
+
 //==========================================================================
 // This state machine handles AXI4-Lite write requests
 //
-// Drives: start_burst_strobe
+// Drives: start_mode
 //         beats_per_burst
 //         burst_count
+//         byte_count
 //==========================================================================
 always @(posedge clk) begin
 
-    start_burst_strobe <= 0;
+    start_mode <= 0;
 
     // If we're in reset, initialize important registers
     if (resetn == 0) begin
@@ -175,11 +179,16 @@ always @(posedge clk) begin
                 case ((ashi_waddr & ADDR_MASK) >> 2)
                 
                     0:  begin
-                            burst_count        <= ashi_wdata;
-                            start_burst_strobe <= 1;
+                            burst_count <= ashi_wdata;
+                            start_mode  <= 1;
                         end
 
                     1:  beats_per_burst <= ashi_wdata;
+
+                    2:  begin
+                            byte_count <= ashi_wdata;
+                            start_mode <= 2;
+                        end
 
                     // Writes to any other register are a decode-error
                     default: ashi_wresp <= DECERR;
@@ -232,10 +241,11 @@ end
 //==========================================================================
 // This state machine writes bursts of data on the AXI-Master interface
 //==========================================================================
-reg[2:0]  bsm_state;
+reg[5:0]  bsm_state;
 reg[15:0] data_word;
 reg[31:0] bursts_remaining;
 reg[7:0]  beats_remaining;
+reg       addr_handshake, data_handshake;
 //==========================================================================
 assign M_AXI_AWSIZE  = 6; // 6 = 2^6 (i.e., 64) bytes per beat
 assign M_AXI_WLAST   = (beats_remaining == 0);
@@ -250,10 +260,14 @@ always @(posedge clk) begin
         M_AXI_WVALID  <= 0;
 
     end else case (bsm_state)
-        0:  if (start_burst_strobe) begin
+        0:  if (start_mode == 1) begin
                 M_AXI_AWADDR     <= 64'h11223344_55667787;
                 bursts_remaining <= burst_count;
                 bsm_state        <= 1;                                
+            end
+            
+            else if (start_mode == 2) begin
+                bsm_state <= 10;
             end
 
         1:  if (bursts_remaining) begin
@@ -296,6 +310,22 @@ always @(posedge clk) begin
                 bsm_state     <= 1;
             end
 
+        10: begin
+                data_word       <= 32'hBEEF;
+                beats_remaining <= 0;
+                M_AXI_AWADDR    <= 64'h11223344_AABBCCDD;
+                M_AXI_AWLEN     <= 0;
+                M_AXI_AWVALID   <= 1;
+                M_AXI_WSTRB     <= (1 << byte_count) - 1;
+                M_AXI_WVALID    <= 1;
+                bsm_state       <= 11;
+            end
+
+        11: begin
+                if ( M_AXI_AWVALID &  M_AXI_AWREADY) M_AXI_AWVALID <= 0;
+                if ( M_AXI_WVALID  &  M_AXI_WREADY ) M_AXI_WVALID  <= 0;
+                if (~M_AXI_AWVALID & ~M_AXI_AWREADY) bsm_state     <= 0;
+            end
 
     endcase
 end

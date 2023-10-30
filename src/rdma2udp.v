@@ -15,24 +15,28 @@
     its own FIFO.
 
     The thread that reads those two FIFOs builds a valid RDMA header header then
-    outputs the packet header followed by the packet data.
+    outputs the RDMA header (in it's own data-cycle) followed by the packet data.
 
     <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     >> An RDMA header is an ordinary ethernet/IP/UDP header followed by an 8-byte target address. <<
     <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
     The incoming AXI Stream should be byte packed; only the last beat (the beat with
-    AXIS_PD_TLAST asserted) may have a TKEEP value with bits set to 0.
+    AXIS_DATA_TLAST asserted) may have a TKEEP value with bits set to 0.
     
     Notable busses:
 
-    fplin feeds the input of the packet-length FIFO
-    AXIS_PD feeds the input of the packet-data FIFO
+        AXIS_ADDR feeds the input of the target-address FIFO
+        AXIS_DATA feeds the input of the packet-data FIFO
+        fplin feeds the input of the packet-length FIFO
 
-    fplout comes from the output of the packet-length FIFO
-    AXIS_RX  comes from the output of the packet-data FIFO
+        fplout is the output of the packet-length FIFO
+        fpdout is the output of the packet-data FIFO
+        ftaout is the output of the target-address FIFO
 
-    AXIS_TX is the output stream containing a UDP packet
+        AXIS_TX is the output stream containing an *sparse* RDMA packet.  It is the job of
+        a downstream module (rdma_pack.v) to byte-pack the sparse RDMA packet into a fully
+        packed AXI stream.
 
 */
 module rdma2udp # 
@@ -76,18 +80,18 @@ module rdma2udp #
     input clk, resetn,
 
     //=========================  Incoming Packet Data  =========================
-    input [STREAM_WB*8-1:0] AXIS_PD_TDATA,
-    input [STREAM_WB  -1:0] AXIS_PD_TKEEP,
-    input                   AXIS_PD_TVALID,
-    input                   AXIS_PD_TLAST,
-    output                  AXIS_PD_TREADY,
+    input [STREAM_WB*8-1:0] AXIS_DATA_TDATA,
+    input [STREAM_WB  -1:0] AXIS_DATA_TKEEP,
+    input                   AXIS_DATA_TVALID,
+    input                   AXIS_DATA_TLAST,
+    output                  AXIS_DATA_TREADY,
     //==========================================================================
 
 
     //===================  Incoming target addresses  ==========================
-    input [63:0]            AXIS_TA_TDATA,
-    input                   AXIS_TA_TVALID,
-    output                  AXIS_TA_TREADY,
+    input [63:0]            AXIS_ADDR_TDATA,
+    input                   AXIS_ADDR_TVALID,
+    output                  AXIS_ADDR_TREADY,
     //==========================================================================
 
     
@@ -314,7 +318,7 @@ always @(posedge clk) begin
 
                 // If a packet-length arrives, the packet header is immediately emitted.
                 // We know for a fact that the entire packet will be queued up and waiting
-                // for us on the AXIS_PD_BUS by the time we receive a packet-length on the
+                // for us on the AXIS_DATA_BUS by the time we receive a packet-length on the
                 // AXIS_LEN bus.
                 if (fplout_tready & fplout_tvalid) fsm_state <= 2;
             end
@@ -330,8 +334,8 @@ end
 
 
 //=====================================================================================================================
-// This block counts the number of one bits in AXIS_PD_TKEEP, thereby determining the number of data-bytes in the
-// AXIS_PD_TDATA field. 
+// This block counts the number of one bits in AXIS_DATA_TKEEP, thereby determining the number of data-bytes in the
+// AXIS_DATA_TDATA field. 
 //=====================================================================================================================
 reg[7:0] data_byte_count;
 //---------------------------------------------------------------------------------------------------------------------
@@ -340,7 +344,7 @@ always @*
 begin
     data_byte_count = 0;  
     for (n=0;n<64;n=n+1) begin   
-        data_byte_count = data_byte_count + AXIS_PD_TKEEP[n];
+        data_byte_count = data_byte_count + AXIS_DATA_TKEEP[n];
     end
 end
 //=====================================================================================================================
@@ -356,7 +360,7 @@ reg[15:0] packet_size;
 assign fplin_tdata = packet_size + data_byte_count;
 
 // AXIS_PL has valid data on the cycle where we see TLAST on the incoming data packet
-assign fplin_tvalid = (AXIS_PD_TREADY & AXIS_PD_TVALID & AXIS_PD_TLAST);
+assign fplin_tvalid = (AXIS_DATA_TREADY & AXIS_DATA_TVALID & AXIS_DATA_TLAST);
 
 always @(posedge clk) begin
     if (resetn == 0) begin
@@ -365,8 +369,8 @@ always @(posedge clk) begin
         
         // On every beat of incoming packet data, accumulate the packet-length.
         // When we see the last beat of the packet, write the packet-length to the FIFO
-        if (AXIS_PD_TVALID & AXIS_PD_TREADY) begin
-            if (AXIS_PD_TLAST == 0)
+        if (AXIS_DATA_TVALID & AXIS_DATA_TREADY) begin
+            if (AXIS_DATA_TLAST == 0)
                 packet_size <= packet_size + data_byte_count;
             else 
                 packet_size <= 0;
@@ -382,7 +386,7 @@ end
 xpm_fifo_axis #
 (
    .FIFO_DEPTH(DATA_FIFO_SIZE),    // DECIMAL
-   .TDATA_WIDTH(STREAM_WB * 8),       // DECIMAL
+   .TDATA_WIDTH(STREAM_WB * 8),    // DECIMAL
    .FIFO_MEMORY_TYPE("auto"),      // String
    .PACKET_FIFO("false"),          // String
    .USE_ADV_FEATURES("0000")       // String
@@ -395,11 +399,11 @@ packet_data_fifo
    .s_aresetn(resetn),
 
     // The input bus to the FIFO
-   .s_axis_tdata (AXIS_PD_TDATA ),
-   .s_axis_tkeep (AXIS_PD_TKEEP ),
-   .s_axis_tvalid(AXIS_PD_TVALID),
-   .s_axis_tlast (AXIS_PD_TLAST ),
-   .s_axis_tready(AXIS_PD_TREADY),
+   .s_axis_tdata (AXIS_DATA_TDATA ),
+   .s_axis_tkeep (AXIS_DATA_TKEEP ),
+   .s_axis_tvalid(AXIS_DATA_TVALID),
+   .s_axis_tlast (AXIS_DATA_TLAST ),
+   .s_axis_tready(AXIS_DATA_TREADY),
 
     // The output bus of the FIFO
    .m_axis_tdata (fpdout_tdata ),     
@@ -514,9 +518,9 @@ target_addr_fifo
    .s_aresetn(resetn),
 
     // The input of this FIFO is wired directly into the module interface
-   .s_axis_tdata (AXIS_TA_TDATA ),
-   .s_axis_tvalid(AXIS_TA_TVALID),
-   .s_axis_tready(AXIS_TA_TREADY),
+   .s_axis_tdata (AXIS_ADDR_TDATA ),
+   .s_axis_tvalid(AXIS_ADDR_TVALID),
+   .s_axis_tready(AXIS_ADDR_TREADY),
 
     // The output bus of the FIFO
    .m_axis_tdata (ftaout_tdata ),     
