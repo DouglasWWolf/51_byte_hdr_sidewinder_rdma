@@ -20,7 +20,8 @@ AXI write transaction.
 module rdma_xmit #
 (
     parameter integer AXI_DATA_WIDTH = 512,
-    parameter integer AXI_ADDR_WIDTH = 64
+    parameter integer AXI_ADDR_WIDTH = 64,
+    parameter integer RDMA_HDR_LEN = (AXI_ADDR_WIDTH + 8)
 )
 (
     //=================  This is the main AXI4-slave interface  ================
@@ -88,18 +89,18 @@ module rdma_xmit #
     //==========================================================================
     //                     AXI-Stream output for addresses
     //==========================================================================
-    output[AXI_ADDR_WIDTH-1:0] AXIS_ADDR_TDATA,
-    output                     AXIS_ADDR_TVALID,
-    input                      AXIS_ADDR_TREADY
+    output[RDMA_HDR_LEN-1:0] AXIS_RDMA_TDATA,
+    output                   AXIS_RDMA_TVALID,
+    input                    AXIS_RDMA_TREADY
     //==========================================================================
 
  );
 
 
-// Wire the AXI-Slave "AW" channel directly to the AXIS_ADDR output stream
-assign AXIS_ADDR_TDATA  = S_AXI_AWADDR;
-assign AXIS_ADDR_TVALID = S_AXI_AWVALID;
-assign S_AXI_AWREADY    = AXIS_ADDR_TREADY;
+// Wire the AXI-Slave "AW" channel directly to the AXIS_RDMA output stream
+assign AXIS_RDMA_TDATA  = {S_AXI_AWLEN, S_AXI_AWADDR};
+assign AXIS_RDMA_TVALID = S_AXI_AWVALID;
+assign S_AXI_AWREADY    = AXIS_RDMA_TREADY;
 
 
 // Wire the AXI-Slave "W" channel directly to the AXIS_DATA output stream

@@ -626,7 +626,7 @@
       <spirit:modelParameter spirit:dataType="integer">
         <spirit:name>RDMA_HDR_LEN</spirit:name>
         <spirit:displayName>Rdma Hdr Len</spirit:displayName>
-        <spirit:value spirit:format="long" spirit:resolve="generated" spirit:id="MODELPARAM_VALUE.RDMA_HDR_LEN">50</spirit:value>
+        <spirit:value spirit:format="long" spirit:resolve="generated" spirit:id="MODELPARAM_VALUE.RDMA_HDR_LEN">51</spirit:value>
       </spirit:modelParameter>
     </spirit:modelParameters>
   </spirit:model>
@@ -647,7 +647,7 @@
     <spirit:parameter>
       <spirit:name>RDMA_HDR_LEN</spirit:name>
       <spirit:displayName>Rdma Hdr Len</spirit:displayName>
-      <spirit:value spirit:format="long" spirit:resolve="user" spirit:id="PARAM_VALUE.RDMA_HDR_LEN">50</spirit:value>
+      <spirit:value spirit:format="long" spirit:resolve="user" spirit:id="PARAM_VALUE.RDMA_HDR_LEN">51</spirit:value>
     </spirit:parameter>
     <spirit:parameter>
       <spirit:name>Component_Name</spirit:name>

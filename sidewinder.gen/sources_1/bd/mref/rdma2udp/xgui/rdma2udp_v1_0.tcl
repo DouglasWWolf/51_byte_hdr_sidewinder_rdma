@@ -10,6 +10,7 @@ proc init_gui { IPINST } {
   ipgui::add_param $IPINST -name "DST_IP3" -parent ${Page_0}
   ipgui::add_param $IPINST -name "DST_PORT" -parent ${Page_0}
   ipgui::add_param $IPINST -name "MAX_PACKET_COUNT" -parent ${Page_0}
+  ipgui::add_param $IPINST -name "RDMA_HDR_LEN" -parent ${Page_0}
   ipgui::add_param $IPINST -name "SRC_IP0" -parent ${Page_0}
   ipgui::add_param $IPINST -name "SRC_IP1" -parent ${Page_0}
   ipgui::add_param $IPINST -name "SRC_IP2" -parent ${Page_0}
@@ -84,6 +85,15 @@ proc validate_PARAM_VALUE.MAX_PACKET_COUNT { PARAM_VALUE.MAX_PACKET_COUNT } {
 	return true
 }
 
+proc update_PARAM_VALUE.RDMA_HDR_LEN { PARAM_VALUE.RDMA_HDR_LEN } {
+	# Procedure called to update RDMA_HDR_LEN when any of the dependent parameters in the arguments change
+}
+
+proc validate_PARAM_VALUE.RDMA_HDR_LEN { PARAM_VALUE.RDMA_HDR_LEN } {
+	# Procedure called to validate RDMA_HDR_LEN
+	return true
+}
+
 proc update_PARAM_VALUE.SRC_IP0 { PARAM_VALUE.SRC_IP0 } {
 	# Procedure called to update SRC_IP0 when any of the dependent parameters in the arguments change
 }
@@ -151,6 +161,11 @@ proc validate_PARAM_VALUE.STREAM_WB { PARAM_VALUE.STREAM_WB } {
 proc update_MODELPARAM_VALUE.STREAM_WB { MODELPARAM_VALUE.STREAM_WB PARAM_VALUE.STREAM_WB } {
 	# Procedure called to set VHDL generic/Verilog parameter value(s) based on TCL parameter value
 	set_property value [get_property value ${PARAM_VALUE.STREAM_WB}] ${MODELPARAM_VALUE.STREAM_WB}
+}
+
+proc update_MODELPARAM_VALUE.RDMA_HDR_LEN { MODELPARAM_VALUE.RDMA_HDR_LEN PARAM_VALUE.RDMA_HDR_LEN } {
+	# Procedure called to set VHDL generic/Verilog parameter value(s) based on TCL parameter value
+	set_property value [get_property value ${PARAM_VALUE.RDMA_HDR_LEN}] ${MODELPARAM_VALUE.RDMA_HDR_LEN}
 }
 
 proc update_MODELPARAM_VALUE.SRC_MAC { MODELPARAM_VALUE.SRC_MAC PARAM_VALUE.SRC_MAC } {

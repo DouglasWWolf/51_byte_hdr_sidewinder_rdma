@@ -3,7 +3,7 @@
 module rdma_pack #
 (
     parameter STREAM_WB = 64,       /* Stream width in bytes              */
-    parameter RDMA_HDR_LEN = 50     /* Length of the RDMA header in bytes */
+    parameter RDMA_HDR_LEN = 51     /* Length of the RDMA header in bytes */
 )
 (
     // clock and reset
